@@ -2294,7 +2294,8 @@ async function deleteDos(id){
   const d=dos.find(x=>x.id===id);
   if(!d)return;
   if(!confirm(`Supprimer définitivement le dossier "${d.id}" (${d.frn}) ?\n\nCette action est irréversible.`))return;
-  await sbDeleteRow('dossiers', id);
+  const ok=await sbDeleteRow('dossiers', id);
+  if(!ok)return;
   dos=dos.filter(x=>x.id!==id);
   if(selDos?.id===id)selDos=null;
   renderDos();
@@ -3170,7 +3171,8 @@ async function deleteFrn(id){
   const n=dos.filter(d=>d.fid===id).length;
   const warn=n>0?`\n\n⚠️ ${n} dossier(s) référencent ce fournisseur. Ils resteront affichés mais ne pointeront plus vers une fiche fournisseur active.`:'';
   if(!confirm(`Supprimer définitivement le fournisseur "${f.nom}" ?${warn}`))return;
-  await sbDeleteRow('fournisseurs', id);
+  const ok=await sbDeleteRow('fournisseurs', id);
+  if(!ok)return;
   frns=frns.filter(x=>x.id!==id);
   if(selFrn?.id===id)selFrn=null;
   renderFrns();
@@ -3261,7 +3263,8 @@ async function deleteArt(id){
   const a=arts.find(x=>x.id===id);
   if(!a)return;
   if(!confirm(`Supprimer définitivement l'article "${a.des}" (${a.ri}) ?`))return;
-  await sbDeleteRow('articles', id);
+  const ok=await sbDeleteRow('articles', id);
+  if(!ok)return;
   arts=arts.filter(x=>x.id!==id);
   renderArts();
   showToast('🗑 Article supprimé');
@@ -5219,8 +5222,8 @@ function logout(){
 // ── Lecture / écriture génériques (une ligne = un objet JSON) ──
 async function sbLoadRows(table){
   const {data,error}=await sb.from(table).select('id,data').eq('site_id',currentSite);
-  if(error){ console.warn(table,error); return null; }
-  return (data||[]).map(r=>r.data);
+  if(error){ console.warn(table,error); return undefined; } // undefined = erreur réseau/permission
+  return (data||[]).map(r=>r.data); // tableau vide = catégorie légitimement vide (tout supprimé)
 }
 async function sbSaveRow(table,row){
   const {error}=await sb.from(table).upsert({id:row.id,site_id:currentSite,data:row,updated_at:new Date().toISOString()});
@@ -5229,7 +5232,9 @@ async function sbSaveRow(table,row){
   return true;
 }
 async function sbDeleteRow(table,id){
-  await sb.from(table).delete().eq('id',id).eq('site_id',currentSite);
+  const {error}=await sb.from(table).delete().eq('id',id).eq('site_id',currentSite);
+  if(error){ console.warn(table,error); showToast('⚠ Erreur de suppression Supabase : '+error.message,true); return false; }
+  return true;
 }
 async function sbGetConfig(key,fallback=null){
   const {data,error}=await sb.from('config').select('value').eq('site_id',currentSite).eq('key',key).maybeSingle();
@@ -5262,9 +5267,9 @@ async function dbInit(){
     sbGetConfig('proforma_historique'),
   ]);
 
-  if(rFrns && rFrns.length){ frns=rFrns; } else { saveFrns(); }
-  if(rArts && rArts.length){ arts=rArts; } else { saveArts(); }
-  if(rDos  && rDos.length){  dos=rDos;   } else { saveDos_db(); }
+  if(rFrns!==undefined){ frns=rFrns; } else { saveFrns(); }
+  if(rArts!==undefined){ arts=rArts; } else { saveArts(); }
+  if(rDos!==undefined) { dos=rDos;   } else { saveDos_db(); }
 
   if(cParams){ PARAMS=cParams; } else { sbSetConfig('params', PARAMS); }
 
