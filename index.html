@@ -2265,6 +2265,7 @@ function renderDos(list){
       </td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="btn btn-ghost btn-xs" onclick="openEditDos('${d.id}')" title="Modifier">✏️</button>
+        <button class="btn btn-ghost btn-xs" style="color:var(--red,#DC2626)" onclick="deleteDos('${d.id}')" title="Supprimer">🗑</button>
         <span style="color:var(--faint);font-size:12px;margin-left:4px">${selDos?.id===d.id?'▲':'▼'}</span>
       </td>
     </tr>`;
@@ -2287,6 +2288,18 @@ function fDossiers(){
 function selDossier(id){
   selDos=selDos?.id===id?null:dos.find(d=>d.id===id);
   renderDos();
+}
+
+async function deleteDos(id){
+  const d=dos.find(x=>x.id===id);
+  if(!d)return;
+  if(!confirm(`Supprimer définitivement le dossier "${d.id}" (${d.frn}) ?\n\nCette action est irréversible.`))return;
+  await sbDeleteRow('dossiers', id);
+  dos=dos.filter(x=>x.id!==id);
+  if(selDos?.id===id)selDos=null;
+  renderDos();
+  updateTop();
+  showToast('🗑 Dossier supprimé');
 }
 
 // Changement statut direct depuis le tableau
@@ -3122,6 +3135,7 @@ function renderFrnDet(){
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost btn-sm" onclick="openFrnForm('${f.id}')">✏️ Modifier</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red,#DC2626)" onclick="deleteFrn('${f.id}')">🗑 Supprimer</button>
           <span class="chip ${f.actif?'chip-green':'chip-gray'}">${f.actif?'Actif':'Inactif'}</span>
         </div>
       </div>
@@ -3148,6 +3162,20 @@ function renderFrnDet(){
           <button class="btn btn-blue btn-sm">⬇ Télécharger</button>
         </div>`).join('')}
     </div>`;
+}
+
+async function deleteFrn(id){
+  const f=frns.find(x=>x.id===id);
+  if(!f)return;
+  const n=dos.filter(d=>d.fid===id).length;
+  const warn=n>0?`\n\n⚠️ ${n} dossier(s) référencent ce fournisseur. Ils resteront affichés mais ne pointeront plus vers une fiche fournisseur active.`:'';
+  if(!confirm(`Supprimer définitivement le fournisseur "${f.nom}" ?${warn}`))return;
+  await sbDeleteRow('fournisseurs', id);
+  frns=frns.filter(x=>x.id!==id);
+  if(selFrn?.id===id)selFrn=null;
+  renderFrns();
+  document.getElementById('frn-det').innerHTML=`<div class="empty"><div class="empty-ico">🏭</div><div class="empty-txt">Sélectionnez un fournisseur</div></div>`;
+  showToast('🗑 Fournisseur supprimé');
 }
 
 function openFrnForm(id){
@@ -3221,9 +3249,22 @@ function renderArts(list){
       <td><span class="chip chip-ink">Cat.${a.tec} · ${TEC[a.tec]}%</span></td>
       <td class="tr bold">${a.px} ${a.dv}</td>
       <td class="tr"><div style="font-weight:800;color:var(--green-dim)">${N(r)} FCFA</div><div style="font-size:10px;color:var(--faint)">DD+TVA+RSI inclus</div></td>
-      <td><button class="btn btn-ghost btn-xs" onclick="openArtForm('${a.id}')">✏️</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-xs" onclick="openArtForm('${a.id}')" title="Modifier">✏️</button>
+        <button class="btn btn-ghost btn-xs" style="color:var(--red,#DC2626)" onclick="deleteArt('${a.id}')" title="Supprimer">🗑</button>
+      </td>
     </tr>`;
   }).join('');
+}
+
+async function deleteArt(id){
+  const a=arts.find(x=>x.id===id);
+  if(!a)return;
+  if(!confirm(`Supprimer définitivement l'article "${a.des}" (${a.ri}) ?`))return;
+  await sbDeleteRow('articles', id);
+  arts=arts.filter(x=>x.id!==id);
+  renderArts();
+  showToast('🗑 Article supprimé');
 }
 
 function fArt(){
